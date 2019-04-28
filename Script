@@ -1,0 +1,35 @@
+#Commands issued for dockerizing container
+export PROJECT_ID="$(gcloud config get-value project -q)"
+
+#Build image by building in the directory of dockerfile
+
+docker build -t gcr.io/${PROJECT_ID}/hello-app:v1 .
+
+#Push the application image to google registry
+gcloud auth configure-docker
+docker push gcr.io/${PROJECT_ID}/hello-app:v1
+
+#Deploy application image on kubernetes cluster.
+kubectl run hello-web --image=gcr.io/${PROJECT_ID}/hello-app:v1 --port 8080
+
+#Expose the application. By exposing the application gets a static IP
+kubectl expose deployment hello-web --type=LoadBalancer --port 80 --target-port 8080
+
+
+#Prometheus deployment
+
+#Create rolebinding and service account (rbac.yaml is in github)
+kubectl create -f rbac.yaml 
+
+#Creating config map
+kubectl create configmap prometheus-config --from-file prometheus.yaml
+
+#Create prometheus deployment on kube cluster
+kubectl create -f prometheus-deployment.yaml
+
+#service
+kubectl create -f prometheus-service.yaml
+
+#Expose service
+expose deployment prometheus-deployment --type=NodePort --name=prometheus-service
+
